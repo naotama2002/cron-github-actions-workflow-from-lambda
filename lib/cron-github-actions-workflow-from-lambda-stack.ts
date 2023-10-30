@@ -2,13 +2,13 @@ import { Construct } from "constructs";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Secret } from "aws-cdk-lib/aws-secretsmanager";
-import * as events from "aws-cdk-lib/aws-events";
-import * as targets from 'aws-cdk-lib/aws-events-targets';
-import * as cdk from "aws-cdk-lib";
+import { Rule, Schedule } from "aws-cdk-lib/aws-events";
+import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
+import { Stack, StackProps, Duration }from "aws-cdk-lib";
 import * as dotenv from "dotenv";
 
-export class CronGithubActionsWorkflowFromLambdaStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+export class CronGithubActionsWorkflowFromLambdaStack extends Stack {
+  constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, props);
 
     // .env ファイル読み込み
@@ -24,8 +24,8 @@ export class CronGithubActionsWorkflowFromLambdaStack extends cdk.Stack {
       // Secrets Manager APN
       const WorkflowDispatch = new NodejsFunction(this, "WorkflowDispatch", {
         runtime: Runtime.NODEJS_18_X,
-        entry: "lib/lambda-handler.ts",
-        timeout: cdk.Duration.seconds(60),
+        entry: "lambda/handler.ts",
+        timeout: Duration.seconds(60),
       });
 
       // AWS Secrets Manager への権限付与
@@ -34,9 +34,9 @@ export class CronGithubActionsWorkflowFromLambdaStack extends cdk.Stack {
       smResource.grantRead(WorkflowDispatch);
 
       // 5分ごとに実行
-      new events.Rule(this, "WorkflowDispatchRule", {
-        schedule: events.Schedule.expression("cron(0/5 * * * ? *)"),
-        targets: [new targets.LambdaFunction(WorkflowDispatch,
+      new Rule(this, "WorkflowDispatchRule", {
+        schedule: Schedule.expression("cron(0/5 * * * ? *)"),
+        targets: [new LambdaFunction(WorkflowDispatch,
           {
             retryAttempts: 0
           }
